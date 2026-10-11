@@ -1,7 +1,390 @@
-test
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mis lugares favoritos</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#f7f7f5;--panel:#ffffff;--text:#1d1d1f;--muted:#6b6b70;--accent:#e4572e;--border:#e2e2e0}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#16161a;--panel:#212127;--text:#f2f2f4;--muted:#9a9aa3;--accent:#ff7a52;--border:#34343c}}
+:root[data-theme="dark"]{--bg:#16161a;--panel:#212127;--text:#f2f2f4;--muted:#9a9aa3;--accent:#ff7a52;--border:#34343c}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+body{display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--border)}
+header h1{font-size:18px;margin:0;margin-right:auto}
+.acciones-header{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;font-size:14px;padding:7px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+button.ghost{background:transparent;color:var(--text);border-color:var(--border)}
+button.link{background:none;border:0;color:var(--text);padding:0;text-align:left;font-weight:600;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{flex:1;display:flex;min-height:0}
+#map{flex:1;min-height:0}
+aside{width:320px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+.filtros{display:flex;flex-direction:column;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.contador{font-size:13px;color:var(--muted);padding:10px 16px 0}
+ul{list-style:none;margin:0;padding:8px 16px 16px;overflow:auto;flex:1}
+.item{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.item .small{grid-column:1 / 2}
+.item button.ghost{grid-row:1 / 3;grid-column:2;align-self:start;padding:4px 8px;font-size:12px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.vacio{padding:0 16px 16px;color:var(--muted);font-size:14px}
+input,select,textarea{font:inherit;font-size:15px;width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text)}
+dialog{border:1px solid var(--border);border-radius:12px;background:var(--panel);color:var(--text);width:min(92vw,400px);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog h2{margin:0 0 12px;font-size:18px}
+dialog label{display:block;font-size:14px;margin-bottom:10px}
+dialog label input,dialog label select,dialog label textarea{margin-top:4px}
+.acciones{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.pin{width:36px;height:36px;border-radius:50%;background:#fff;border:2px solid var(--accent);display:grid;place-items:center;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.popup{color:#1d1d1f;min-width:160px}
+.popup .muted{color:#555;font-size:13px}
+.popup p{margin:6px 0 0;font-size:14px}
+@media (max-width:760px){
+  main{flex-direction:column}
+  #map{flex:none;height:55vh}
+  aside{width:auto;flex:1;border-left:0;border-top:1px solid var(--border)}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mis lugares favoritos</h1>
+  <div class="acciones-header">
+    <button class="ghost" id="ubicacion" type="button">Mi ubicación</button>
+    <button class="ghost" id="compartir" type="button">Compartir enlace</button>
+    <button class="ghost" id="exportar" type="button">Exportar</button>
+    <button class="ghost" id="importar" type="button">Importar</button>
+    <input type="file" id="archivo" accept="application/json,.json" hidden>
+  </div>
+</header>
 
+<main>
+  <div id="map" aria-label="Mapa de lugares"></div>
+  <aside>
+    <div class="filtros">
+      <input type="search" id="buscar" placeholder="Buscar por nombre o nota">
+      <select id="filtro" aria-label="Filtrar por categoría"></select>
+      <span class="small muted">Haz clic en el mapa para agregar un lugar.</span>
+    </div>
+    <div class="contador" id="contador"></div>
+    <ul id="lista"></ul>
+    <p class="vacio" id="vacio" hidden>No hay lugares que coincidan.</p>
+  </aside>
+</main>
 
+<dialog id="dialogo">
+  <form id="form">
+    <h2>Nuevo lugar</h2>
+    <label>Nombre
+      <input name="name" required maxlength="80" autocomplete="off">
+    </label>
+    <label>Categoría
+      <select name="category" id="categoria-form"></select>
+    </label>
+    <label>Nota
+      <textarea name="note" rows="3" maxlength="500"></textarea>
+    </label>
+    <p class="small muted" id="coordenadas"></p>
+    <div class="acciones">
+      <button type="button" class="ghost" id="cancelar">Cancelar</button>
+      <button type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
 
-probando esto por segunda vez
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const CATEGORIAS = {
+  comida:  {nombre: 'Comida',  emoji: '🍽️'},
+  cafe:    {nombre: 'Café',    emoji: '☕'},
+  bar:     {nombre: 'Bar',     emoji: '🍸'},
+  parque:  {nombre: 'Parque',  emoji: '🌳'},
+  cultura: {nombre: 'Cultura', emoji: '🏛️'},
+  compras: {nombre: 'Compras', emoji: '🛍️'},
+  otro:    {nombre: 'Otro',    emoji: '📍'}
+};
+const CLAVE_STORAGE = 'lugares.v1';
 
-let's see what is going on
+let lugares = cargarLugares();
+let coordenadaPendiente = null;
+const marcadores = new Map();
+
+const map = L.map('map').setView([20, 0], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
+
+const buscar = document.getElementById('buscar');
+const filtro = document.getElementById('filtro');
+const lista = document.getElementById('lista');
+const vacio = document.getElementById('vacio');
+const contador = document.getElementById('contador');
+const dialogo = document.getElementById('dialogo');
+const form = document.getElementById('form');
+const coordenadas = document.getElementById('coordenadas');
+const archivo = document.getElementById('archivo');
+
+// Opciones de categoría en el filtro y en el formulario
+for (const [valor, cat] of Object.entries(CATEGORIAS)) {
+  filtro.add(new Option(`${cat.emoji} ${cat.nombre}`, valor));
+  document.getElementById('categoria-form').add(new Option(`${cat.emoji} ${cat.nombre}`, valor));
+}
+filtro.insertBefore(new Option('Todas las categorías', 'todas'), filtro.firstChild);
+filtro.value = 'todas';
+
+function crearId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// Valida y limpia datos externos (archivos o enlaces compartidos)
+function sanear(entrada) {
+  if (!Array.isArray(entrada)) return [];
+  return entrada
+    .filter(l => l && typeof l.name === 'string' && l.name.trim()
+      && Number.isFinite(l.lat) && Number.isFinite(l.lng)
+      && Math.abs(l.lat) <= 90 && Math.abs(l.lng) <= 180)
+    .map(l => ({
+      id: String(l.id ?? crearId()),
+      name: l.name.trim().slice(0, 80),
+      category: Object.hasOwn(CATEGORIAS, l.category) ? l.category : 'otro',
+      note: String(l.note ?? '').slice(0, 500),
+      lat: l.lat,
+      lng: l.lng
+    }));
+}
+
+function cargarLugares() {
+  try {
+    return sanear(JSON.parse(localStorage.getItem(CLAVE_STORAGE)));
+  } catch {
+    return [];
+  }
+}
+
+function guardar() {
+  try {
+    localStorage.setItem(CLAVE_STORAGE, JSON.stringify(lugares));
+  } catch {
+    alert('No pude guardar en este navegador. Exporta tus lugares para no perderlos.');
+  }
+}
+
+function filtrados() {
+  const q = buscar.value.trim().toLowerCase();
+  const cat = filtro.value;
+  return lugares.filter(l =>
+    (cat === 'todas' || l.category === cat) &&
+    (!q || l.name.toLowerCase().includes(q) || l.note.toLowerCase().includes(q))
+  );
+}
+
+function contenidoPopup(l) {
+  const div = document.createElement('div');
+  div.className = 'popup';
+  const titulo = document.createElement('strong');
+  titulo.textContent = l.name;
+  const categoria = document.createElement('div');
+  categoria.className = 'muted';
+  categoria.textContent = CATEGORIAS[l.category].nombre;
+  div.append(titulo, categoria);
+  if (l.note) {
+    const nota = document.createElement('p');
+    nota.textContent = l.note;
+    div.append(nota);
+  }
+  return div;
+}
+
+function crearItem(l) {
+  const li = document.createElement('li');
+  li.className = 'item';
+
+  const boton = document.createElement('button');
+  boton.className = 'link';
+  boton.textContent = `${CATEGORIAS[l.category].emoji} ${l.name}`;
+  boton.addEventListener('click', () => {
+    map.setView([l.lat, l.lng], 16);
+    marcadores.get(l.id)?.openPopup();
+  });
+
+  const detalle = document.createElement('div');
+  detalle.className = 'small muted';
+  detalle.textContent = l.note || CATEGORIAS[l.category].nombre;
+
+  const eliminar = document.createElement('button');
+  eliminar.className = 'ghost';
+  eliminar.textContent = 'Eliminar';
+  eliminar.addEventListener('click', () => {
+    if (confirm(`¿Eliminar "${l.name}"?`)) {
+      lugares = lugares.filter(x => x.id !== l.id);
+      guardar();
+      render();
+    }
+  });
+
+  li.append(boton, detalle, eliminar);
+  return li;
+}
+
+// Dibuja mapa y lista según los filtros activos
+function render() {
+  const visibles = filtrados();
+
+  marcadores.forEach(m => m.remove());
+  marcadores.clear();
+  for (const l of visibles) {
+    const icono = L.divIcon({
+      className: '',
+      html: `<div class="pin">${CATEGORIAS[l.category].emoji}</div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+    const marcador = L.marker([l.lat, l.lng], { icon: icono })
+      .addTo(map)
+      .bindPopup(() => contenidoPopup(l));
+    marcadores.set(l.id, marcador);
+  }
+
+  lista.replaceChildren(...visibles.map(crearItem));
+  vacio.hidden = visibles.length > 0;
+  contador.textContent = `${visibles.length} de ${lugares.length} lugares`;
+}
+
+// Abrir el formulario al hacer clic en el mapa
+map.on('click', e => {
+  coordenadaPendiente = e.latlng;
+  coordenadas.textContent = `Ubicación: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+  form.reset();
+  dialogo.showModal();
+  form.elements.name.focus();
+});
+
+document.getElementById('cancelar').addEventListener('click', () => dialogo.close());
+
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  if (!form.checkValidity() || !coordenadaPendiente) {
+    form.reportValidity();
+    return;
+  }
+  const datos = new FormData(form);
+  lugares.push({
+    id: crearId(),
+    name: datos.get('name').trim(),
+    category: datos.get('category'),
+    note: datos.get('note').trim(),
+    lat: coordenadaPendiente.lat,
+    lng: coordenadaPendiente.lng
+  });
+  guardar();
+  dialogo.close();
+  render();
+});
+
+buscar.addEventListener('input', render);
+filtro.addEventListener('change', render);
+
+// Agrega lugares nuevos y omite los que ya existen (mismo id)
+function fusionar(nuevos) {
+  const ids = new Set(lugares.map(l => l.id));
+  const agregados = nuevos.filter(l => !ids.has(l.id));
+  lugares = lugares.concat(agregados);
+  guardar();
+  render();
+  return agregados.length;
+}
+
+function codificar(texto) {
+  const bytes = new TextEncoder().encode(texto);
+  let binario = '';
+  bytes.forEach(b => { binario += String.fromCharCode(b); });
+  return btoa(binario);
+}
+
+function decodificar(base64) {
+  const binario = atob(base64);
+  const bytes = Uint8Array.from(binario, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+document.getElementById('ubicacion').addEventListener('click', () => {
+  if (!navigator.geolocation) return alert('Tu navegador no permite obtener la ubicación.');
+  navigator.geolocation.getCurrentPosition(
+    p => map.setView([p.coords.latitude, p.coords.longitude], 15),
+    () => alert('No pude obtener tu ubicación.'),
+    { timeout: 10000 }
+  );
+});
+
+document.getElementById('compartir').addEventListener('click', async () => {
+  const datos = codificar(JSON.stringify({ v: 1, lugares }));
+  const enlace = `${location.href.split('#')[0]}#lugares=${datos}`;
+  try {
+    await navigator.clipboard.writeText(enlace);
+    alert('Enlace copiado. Envíalo a tus amigos para que importen tus lugares.');
+  } catch {
+    prompt('Copia este enlace:', enlace);
+  }
+});
+
+document.getElementById('exportar').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({ v: 1, lugares }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mis-lugares.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+});
+
+document.getElementById('importar').addEventListener('click', () => archivo.click());
+
+archivo.addEventListener('change', async () => {
+  const fichero = archivo.files[0];
+  archivo.value = '';
+  if (!fichero) return;
+  try {
+    const datos = JSON.parse(await fichero.text());
+    const nuevos = sanear(datos.lugares);
+    const agregados = fusionar(nuevos);
+    alert(`Importé ${agregados} lugares nuevos.`);
+  } catch {
+    alert('El archivo no es válido.');
+  }
+});
+
+// Si llegas desde un enlace compartido, ofrece importar sus lugares
+function importarDesdeEnlace() {
+  const coincidencia = location.hash.match(/lugares=([^&]+)/);
+  if (!coincidencia) return false;
+  history.replaceState(null, '', location.pathname + location.search);
+  try {
+    const nuevos = sanear(JSON.parse(decodificar(coincidencia[1])).lugares);
+    if (nuevos.length && confirm(`Te compartieron ${nuevos.length} lugares. ¿Agregarlos a tu mapa?`)) {
+      fusionar(nuevos);
+    }
+  } catch {
+    alert('El enlace compartido no es válido.');
+  }
+  return true;
+}
+
+importarDesdeEnlace();
+render();
+
+if (lugares.length) {
+  map.fitBounds(L.latLngBounds(lugares.map(l => [l.lat, l.lng])), { padding: [40, 40], maxZoom: 15 });
+} else if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(
+    p => map.setView([p.coords.latitude, p.coords.longitude], 13),
+    () => {},
+    { timeout: 8000 }
+  );
+}
+</script>
+</body>
+</html>
