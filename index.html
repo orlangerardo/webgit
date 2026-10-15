@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cata a Ciegas · Expediente Noir</title>
+<meta name="description" content="Juego de misterio: resuelvan el envenenamiento de Tomás Etchegaray en una cata a ciegas.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="barra">
+  <div class="barra-fila">
+    <h1 class="marca">Cata a Ciegas <small>Expediente N.º 000 · Brigada de Homicidios</small></h1>
+    <div class="chips" aria-live="polite">
+      <span class="chip" id="chip-puntos"></span>
+      <span class="chip" id="chip-pistas"></span>
+    </div>
+  </div>
+  <nav id="nav" aria-label="Secciones del expediente"></nav>
+</header>
+
+<main id="vista"></main>
+
+<dialog id="dlg" aria-label="Pedir diligencia"></dialog>
+
+<noscript><p style="padding:16px">Este juego necesita JavaScript.</p></noscript>
+<script src="caso.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
