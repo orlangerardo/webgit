@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cata a Ciegas · Expediente Noir</title>
 <meta name="description" content="Juego de misterio: resuelvan el envenenamiento de Tomás Etchegaray en una cata a ciegas.">
+<meta name="theme-color" content="#8f1d2c">
+<meta property="og:title" content="Cata a Ciegas · Expediente Noir">
+<meta property="og:description" content="Un hombre muere envenenado en mitad de su propia cata. Cinco sospechosos, un solo culpable. ¿Lo resuelves?">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://orlangerardo.github.io/webgit/assets/portada.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%8D%B7%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,6 +20,7 @@
     <div class="chips" aria-live="polite">
       <span class="chip" id="chip-puntos"></span>
       <span class="chip" id="chip-pistas"></span>
+      <button type="button" class="chip chip-btn" id="btn-notas" aria-expanded="false" aria-controls="cajon">Notas</button>
     </div>
   </div>
   <nav id="nav" aria-label="Secciones del expediente"></nav>
@@ -22,6 +29,14 @@
 <main id="vista"></main>
 
 <dialog id="dlg" aria-label="Pedir diligencia"></dialog>
+
+<aside id="cajon" class="cajon" aria-label="Notas del equipo" hidden>
+  <header>
+    <strong>Notas del equipo</strong>
+    <button type="button" class="cerrar" id="cerrar-notas" aria-label="Cerrar notas">×</button>
+  </header>
+  <textarea id="notas-rapidas" aria-label="Notas del equipo" placeholder="Anoten aquí mientras leen. Lo mismo aparece en Libreta."></textarea>
+</aside>
 
 <noscript><p style="padding:16px">Este juego necesita JavaScript.</p></noscript>
 <script src="caso.js"></script>

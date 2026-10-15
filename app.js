@@ -6,17 +6,18 @@ const CLAVE = 'cata-a-ciegas.v1';
 const PUNTOS_DILIGENCIAS = 5;
 const COSTO_PISTA = 3;
 
+// [id, etiqueta, grupo]: el grupo separa el expediente de la investigación.
 const TABS = [
-  ['inicio', 'Inicio'],
-  ['caso', 'El caso'],
-  ['victima', 'La víctima'],
-  ['escena', 'La escena'],
-  ['personas', 'Las personas'],
-  ['pruebas', 'Las pruebas'],
-  ['diligencias', 'Diligencias'],
-  ['confrontar', 'Confrontar'],
-  ['libreta', 'Libreta'],
-  ['resolucion', 'Resolución']
+  ['inicio', 'Inicio', 'expediente'],
+  ['caso', 'Caso', 'expediente'],
+  ['victima', 'Víctima', 'expediente'],
+  ['escena', 'Escena', 'expediente'],
+  ['personas', 'Personas', 'expediente'],
+  ['pruebas', 'Pruebas', 'expediente'],
+  ['diligencias', 'Diligencias', 'investigacion'],
+  ['confrontar', 'Confrontar', 'investigacion'],
+  ['libreta', 'Libreta', 'investigacion'],
+  ['resolucion', 'Resolver', 'final']
 ];
 
 // ---------- utilidades ----------
@@ -71,6 +72,7 @@ function estadoInicial() {
     matriz: {},
     confrontaciones: [],
     resp: { culpable: '', movil: '', lugar: '', origen: '', momento: '', pruebas: [], mentiras: [{ p: '', r: '' }, { p: '', r: '' }, { p: '', r: '' }] },
+    paso: 0,
     resultado: null
   };
 }
@@ -111,8 +113,18 @@ function ir(tab) {
 
 function renderCabecera() {
   const nav = $('#nav');
-  nav.replaceChildren(...TABS.map(([id, texto]) =>
-    h('button', { type: 'button', class: 'tab', 'aria-current': S.tab === id ? 'page' : null, onclick: () => ir(id) }, texto)));
+  const botones = [];
+  TABS.forEach(([id, texto, grupo], i) => {
+    if (i > 0 && TABS[i - 1][2] !== grupo && grupo !== 'final') botones.push(h('span', { class: 'sep', 'aria-hidden': 'true' }));
+    botones.push(h('button', {
+      type: 'button', class: 'tab' + (grupo === 'final' ? ' tab-final' : ''),
+      'aria-current': S.tab === id ? 'page' : null, onclick: () => ir(id)
+    }, texto));
+  });
+  nav.replaceChildren(...botones);
+  // En pantallas angostas la barra se desplaza: dejar visible la pestaña activa.
+  const activa = nav.querySelector('[aria-current="page"]');
+  if (activa) nav.scrollLeft = activa.offsetLeft - (nav.clientWidth - activa.offsetWidth) / 2;
   $('#chip-puntos').textContent = `Diligencias: ${puntosRestantes()}/${PUNTOS_DILIGENCIAS} pts`;
   $('#chip-pistas').textContent = `Pistas: ${S.pistas}/${CASO.pistas.length}`;
 }
@@ -124,6 +136,8 @@ function render() {
   const vistas = { inicio: vInicio, caso: vCaso, victima: vVictima, escena: vEscena, personas: vPersonas,
     pruebas: vPruebas, diligencias: vDiligencias, confrontar: vConfrontar, libreta: vLibreta, resolucion: vResolucion };
   $('#vista').replaceChildren((vistas[S.tab] || vInicio)());
+  const rapidas = $('#notas-rapidas');
+  if (rapidas && document.activeElement !== rapidas) rapidas.value = S.notas;
 }
 
 // ---------- vistas de lectura ----------
@@ -281,7 +295,11 @@ function abrirPedido(d) {
   const objetivo = d.objetivos
     ? h('label', null, d.etiquetaObjetivo,
         h('select', { name: 'objetivo', required: true },
-          d.objetivos.map(o => h('option', { value: o }, nombre(o)))))
+          h('option', { value: '' }, 'Elegir…'),
+          d.objetivos.map(o => {
+            const ya = tieneResultado(clave(d.id, o));
+            return h('option', { value: o, disabled: ya }, nombre(o) + (ya ? ' (ya obtenido)' : ''));
+          })))
     : null;
 
   const form = h('form', { class: 'dlg-form', onsubmit: e => {
@@ -307,19 +325,22 @@ function abrirPedido(d) {
     render();
     $('#registro')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } },
-    h('h2', null, `${d.id} · ${d.nombre}`),
-    h('p', { class: 'nota' }, `Cuesta ${d.costo} pt. Les quedan ${puntosRestantes()}.`),
-    objetivo,
-    h('fieldset', null,
-      h('legend', null, '¿Qué buscan y por qué?'),
-      CASO.fundamentos.map((f, i) =>
-        h('label', { class: 'opcion' },
-          h('input', { type: 'radio', name: 'fund', value: f.id, required: i === 0 }),
-          h('span', null, f.txt)))),
-    error,
-    h('div', { class: 'acciones' },
-      h('button', { type: 'button', class: 'secundario', onclick: () => dlg.close() }, 'Cancelar'),
-      h('button', { type: 'submit', class: 'primario' }, `Pedir (${d.costo} pt)`)));
+    h('div', { class: 'dlg-cabeza' },
+      h('h2', null, `${d.id} · ${d.nombre}`),
+      h('p', { class: 'nota' }, `${d.desc} Cuesta ${d.costo} pt; les quedan ${puntosRestantes()}.`),
+      objetivo),
+    h('div', { class: 'dlg-cuerpo' },
+      h('fieldset', null,
+        h('legend', null, '¿Qué buscan y por qué?'),
+        CASO.fundamentos.map((f, i) =>
+          h('label', { class: 'opcion' },
+            h('input', { type: 'radio', name: 'fund', value: f.id, required: i === 0 }),
+            h('span', null, f.txt))))),
+    h('div', { class: 'dlg-pie' },
+      error,
+      h('div', { class: 'acciones' },
+        h('button', { type: 'button', class: 'secundario', onclick: () => dlg.close() }, 'Cancelar'),
+        h('button', { type: 'submit', class: 'primario' }, `Pedir (${d.costo} pt)`))));
   abrirDialogo(form);
 }
 
@@ -437,7 +458,7 @@ function vLibreta() {
 
   const notas = h('textarea', {
     class: 'notas', rows: 10, 'aria-label': 'Notas del equipo', placeholder: 'Ej.: Gaspar dice «ninguna Saavedra»…',
-    value: S.notas, oninput: e => { S.notas = e.target.value; guardar(); }
+    value: S.notas, oninput: e => { S.notas = e.target.value; guardar(); $('#notas-rapidas').value = S.notas; }
   });
   const matriz = h('div', { class: 'tabla-wrap' },
     h('table', { class: 'matriz' },
@@ -457,70 +478,154 @@ function selectOpciones(opciones, valor, onchange, etiqueta) {
     opciones.map(o => h('option', { value: o.id, selected: o.id === valor }, o.txt)));
 }
 
+// Pasos de la hoja de resolución. «listo» indica si el paso tiene respuesta completa.
+const PASOS = [
+  { titulo: 'Culpable', pregunta: '¿Quién mató a Tomás?', pts: 30, listo: r => !!r.culpable },
+  { titulo: 'Móvil', pregunta: '¿Por qué lo hizo?', pts: 20, listo: r => !!r.movil },
+  { titulo: 'Método', pregunta: '¿Cómo y cuándo lo envenenó?', pts: 20, listo: r => !!(r.lugar && r.origen && r.momento) },
+  { titulo: 'Pruebas', pregunta: 'Tres pruebas independientes', pts: 15, listo: r => r.pruebas.length === 3 },
+  { titulo: 'Mentiras', pregunta: 'Tres mentiras que NO son el homicidio', pts: 15, listo: r => r.mentiras.every(m => m.p && m.r) },
+  { titulo: 'Entregar', pregunta: 'Revisen y entreguen', pts: null, listo: () => false }
+];
+
+function irPaso(i) {
+  S.paso = i;
+  guardar();
+  render();
+  window.scrollTo({ top: 0 });
+}
+
 function vResolucion() {
   if (S.resultado) return vResultado();
   const R = CASO.resolucion;
   const r = S.resp;
-  const set = (k, v) => { r[k] = v; guardar(); };
-  const error = h('p', { class: 'error', role: 'alert', hidden: true });
+  const paso = Math.min(Math.max(S.paso || 0, 0), PASOS.length - 1);
+  const def = PASOS[paso];
+
+  const barra = h('ol', { class: 'pasos' });
+  const pintarBarra = () => barra.replaceChildren(...PASOS.map((p, i) => h('li', null,
+    h('button', {
+      type: 'button', 'data-paso': i, onclick: () => irPaso(i),
+      class: 'paso' + (i === paso ? ' actual' : '') + (p.listo(r) ? ' listo' : ''),
+      'aria-current': i === paso ? 'step' : null,
+      'aria-label': `Paso ${i + 1}: ${p.titulo}${p.listo(r) ? ' (respondido)' : ''}`
+    },
+      h('span', { class: 'num', 'aria-hidden': 'true' }, p.listo(r) ? '✓' : String(i + 1)),
+      h('span', { class: 'txt' }, p.titulo)))));
+  const set = (k, v) => { r[k] = v; guardar(); pintarBarra(); };
 
   const radios = (grupo, k) => h('div', { class: 'radios' }, grupo.map(o =>
     h('label', { class: 'opcion' },
       h('input', { type: 'radio', name: k, value: o.id, checked: r[k] === o.id, onchange: () => set(k, o.id) }),
       h('span', null, o.txt))));
 
-  const culpables = CASO.personas.map(p => ({ id: p.id, txt: p.nombre }));
+  const cuerpos = [
+    () => radios(CASO.personas.map(p => ({ id: p.id, txt: p.nombre })), 'culpable'),
+    () => radios(R.movil, 'movil'),
+    () => [
+      h('h3', null, 'Dónde estaba el veneno'), radios(R.lugar, 'lugar'),
+      h('h3', null, 'De dónde salió'), radios(R.origen, 'origen'),
+      h('h3', null, 'Cuándo lo colocó'), radios(R.momento, 'momento')
+    ],
+    () => {
+      const contador = h('p', { class: 'nota contador' }, `${r.pruebas.length} de 3 elegidas`);
+      const lista = h('div', { class: 'radios' }, R.pruebas.map(o =>
+        h('label', { class: 'opcion' },
+          h('input', { type: 'checkbox', value: o.id, checked: r.pruebas.includes(o.id), onchange: e => {
+            const marcadas = new Set(r.pruebas);
+            if (e.target.checked) {
+              if (marcadas.size >= 3) { e.target.checked = false; return; }
+              marcadas.add(o.id);
+            } else marcadas.delete(o.id);
+            r.pruebas = [...marcadas];
+            guardar();
+            pintarBarra();
+            contador.textContent = `${r.pruebas.length} de 3 elegidas`;
+          } }),
+          h('span', null, o.txt))));
+      return [h('p', null, 'Elijan exactamente tres. Cada una suma si viene de una fuente distinta.'), lista, contador];
+    },
+    () => [
+      h('p', null, 'Casi todos mintieron en algo. Elijan tres mentiras que no tienen que ver con el crimen, con la razón de cada una.'),
+      r.mentiras.map((m, i) => h('div', { class: 'mentira' },
+        h('strong', null, `Mentira ${i + 1}`),
+        h('label', null, 'Persona',
+          selectOpciones(CASO.personas.map(p => ({ id: p.id, txt: p.corto })), m.p, v => { m.p = v; guardar(); pintarBarra(); }, `Persona de la mentira ${i + 1}`)),
+        h('label', null, 'Razón',
+          selectOpciones(R.razones, m.r, v => { m.r = v; guardar(); pintarBarra(); }, `Razón de la mentira ${i + 1}`))))
+    ],
+    () => entrega.nodos
+  ];
 
-  const pruebas = h('div', { class: 'radios' }, R.pruebas.map(o =>
-    h('label', { class: 'opcion' },
-      h('input', { type: 'checkbox', value: o.id, checked: r.pruebas.includes(o.id), onchange: e => {
-        const marcadas = new Set(r.pruebas);
-        if (e.target.checked) {
-          if (marcadas.size >= 3) { e.target.checked = false; return; }
-          marcadas.add(o.id);
-        } else marcadas.delete(o.id);
-        r.pruebas = [...marcadas];
-        guardar();
-        contador.textContent = `${r.pruebas.length} de 3 elegidas`;
-      } }),
-      h('span', null, o.txt))));
-  const contador = h('p', { class: 'nota' }, `${r.pruebas.length} de 3 elegidas`);
+  const entrega = paso === PASOS.length - 1 ? vEntregar() : null;
+  pintarBarra();
+  const anterior = paso > 0
+    ? h('button', { type: 'button', class: 'secundario', onclick: () => irPaso(paso - 1) }, '← Anterior')
+    : h('span');
+  const siguiente = paso < PASOS.length - 1
+    ? h('button', { type: 'button', class: 'primario', onclick: () => irPaso(paso + 1) }, paso === PASOS.length - 2 ? 'Revisar →' : 'Siguiente →')
+    : entrega.boton;
 
-  const mentiras = r.mentiras.map((m, i) => h('div', { class: 'mentira' },
-    h('strong', null, `Mentira ${i + 1}`),
-    h('label', null, 'Persona',
-      selectOpciones(CASO.personas.map(p => ({ id: p.id, txt: p.corto })), m.p, v => { m.p = v; guardar(); }, `Persona de la mentira ${i + 1}`)),
-    h('label', null, 'Razón',
-      selectOpciones(R.razones, m.r, v => { m.r = v; guardar(); }, `Razón de la mentira ${i + 1}`))));
+  return h('div', null,
+    h('section', { class: 'hoja' },
+      h('h2', null, 'Hoja de resolución'),
+      h('p', { class: 'nota' }, `Máximo 100 puntos, menos ${COSTO_PISTA} por cada pista usada (llevan ${S.pistas}). Sus respuestas se guardan solas.`),
+      barra),
+    h('section', { class: 'hoja' },
+      h('p', { class: 'etiqueta' }, `Paso ${paso + 1} de ${PASOS.length}${def.pts ? ` · ${def.pts} pts` : ''}`),
+      h('h2', null, def.pregunta),
+      cuerpos[paso](),
+      h('div', { class: 'pasos-nav' }, anterior, siguiente)));
+}
 
-  return h('form', { onsubmit: e => {
-    e.preventDefault();
-    const faltan = !r.culpable || !r.movil || !r.lugar || !r.origen || !r.momento || r.pruebas.length !== 3 || r.mentiras.some(m => !m.p || !m.r);
-    if (faltan) {
-      error.textContent = 'Completen todas las preguntas: eligen 3 pruebas y 3 mentiras, cada una con persona y razón.';
+function textoRespuesta(i) {
+  const R = CASO.resolucion;
+  const r = S.resp;
+  const txt = (lista, id) => (lista.find(o => o.id === id) || {}).txt;
+  switch (i) {
+    case 0: return r.culpable ? [CASO.personas.find(p => p.id === r.culpable).nombre] : [];
+    case 1: return r.movil ? [txt(R.movil, r.movil)] : [];
+    case 2: return [txt(R.lugar, r.lugar), txt(R.origen, r.origen), txt(R.momento, r.momento)].filter(Boolean);
+    case 3: return r.pruebas.map(id => txt(R.pruebas, id));
+    case 4: return r.mentiras.filter(m => m.p || m.r).map(m => `${m.p ? nombre(m.p) : '¿Quién?'}: ${txt(R.razones, m.r) || '¿Por qué?'}`);
+    default: return [];
+  }
+}
+
+function vEntregar() {
+  const error = h('p', { class: 'error', role: 'alert', hidden: true });
+  const filas = PASOS.slice(0, -1).map((p, i) => {
+    const resp = textoRespuesta(i);
+    return h('div', { class: 'resumen-fila' + (p.listo(S.resp) ? '' : ' falta') },
+      h('div', null,
+        h('strong', null, `${i + 1}. ${p.titulo}`),
+        p.listo(S.resp) ? null : h('span', { class: 'falta-txt' }, ' · Falta completar'),
+        resp.length ? h('ul', { class: 'lista' }, resp.map(t => h('li', null, t))) : h('p', { class: 'nota' }, 'Sin respuesta.')),
+      h('button', { type: 'button', class: 'secundario chico', onclick: () => irPaso(i) }, 'Cambiar'));
+  });
+
+  const entregar = () => {
+    const faltan = PASOS.slice(0, -1).filter(p => !p.listo(S.resp)).map(p => p.titulo);
+    if (faltan.length) {
+      error.textContent = `Falta completar: ${faltan.join(', ')}.`;
       error.hidden = false;
-      error.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     if (!confirm('¿Entregar la resolución? No se puede cambiar después.')) return;
-    S.resultado = corregir(r);
+    S.resultado = corregir(S.resp);
     guardar();
     render();
     window.scrollTo({ top: 0 });
-  } },
-    h('section', { class: 'hoja' },
-      h('h2', null, 'Hoja de resolución'),
-      h('p', null, `Máximo 100 puntos, menos ${COSTO_PISTA} por cada pista usada (llevan ${S.pistas}). Usaron ${puntosGastados()} de ${PUNTOS_DILIGENCIAS} puntos de diligencia.`)),
-    seccion('1. ¿Quién mató a Tomás? (30 pts)', radios(culpables, 'culpable')),
-    seccion('2. ¿Por qué? Móvil (20 pts)', radios(R.movil, 'movil')),
-    seccion('3. ¿Cómo y cuándo lo envenenó? (20 pts)',
-      h('h3', null, 'Dónde estaba el veneno'), radios(R.lugar, 'lugar'),
-      h('h3', null, 'De dónde salió'), radios(R.origen, 'origen'),
-      h('h3', null, 'Cuándo lo colocó'), radios(R.momento, 'momento')),
-    seccion('4. Tres pruebas independientes (15 pts)', h('p', null, 'Elijan exactamente tres. Cuentan si vienen de fuentes distintas.'), pruebas, contador),
-    seccion('5. Tres mentiras que NO son el homicidio, y su razón (15 pts)', mentiras),
-    error,
-    h('div', { class: 'acciones' }, h('button', { type: 'submit', class: 'primario grande' }, 'Entregar resolución')));
+  };
+
+  return {
+    nodos: [
+      h('p', null, `Usaron ${puntosGastados()} de ${PUNTOS_DILIGENCIAS} puntos de diligencia y ${S.pistas} pistas.`),
+      h('div', { class: 'resumen' }, filas),
+      error
+    ],
+    boton: h('button', { type: 'button', class: 'primario', id: 'entregar', onclick: entregar }, 'Entregar resolución')
+  };
 }
 
 function corregir(r) {
@@ -606,7 +711,31 @@ function reiniciar() {
 
 // ---------- arranque ----------
 
+function alternarNotas(abrir) {
+  const cajon = $('#cajon');
+  const boton = $('#btn-notas');
+  const abierto = abrir ?? cajon.hidden;
+  cajon.hidden = !abierto;
+  boton.setAttribute('aria-expanded', String(abierto));
+  if (abierto) {
+    const t = $('#notas-rapidas');
+    t.value = S.notas;
+    t.focus();
+  } else boton.focus();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   $('#dlg').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  $('#btn-notas').addEventListener('click', () => alternarNotas());
+  $('#cerrar-notas').addEventListener('click', () => alternarNotas(false));
+  $('#notas-rapidas').addEventListener('input', e => {
+    S.notas = e.target.value;
+    guardar();
+    const libreta = document.querySelector('#vista textarea.notas');
+    if (libreta) libreta.value = S.notas;
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('#cajon').hidden && !$('#dlg').open) alternarNotas(false);
+  });
   render();
 });
