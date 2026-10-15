@@ -711,6 +711,61 @@ function reiniciar() {
 
 // ---------- arranque ----------
 
+// ---------- preferencias de lectura (por navegador) ----------
+
+const CLAVE_PREFS = 'cata-a-ciegas.prefs';
+const ESCALAS = [0.875, 1, 1.125, 1.25, 1.375];
+const TEMAS = ['claro', 'oscuro', 'sistema'];
+
+function cargarPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem(CLAVE_PREFS)) || {};
+    return { tema: TEMAS.includes(p.tema) ? p.tema : 'sistema', escala: ESCALAS.includes(p.escala) ? p.escala : 1 };
+  } catch {
+    return { tema: 'sistema', escala: 1 };
+  }
+}
+
+let P = cargarPrefs();
+
+function aplicarPrefs() {
+  const raiz = document.documentElement;
+  if (P.tema === 'sistema') delete raiz.dataset.theme;
+  else raiz.dataset.theme = P.tema === 'oscuro' ? 'dark' : 'light';
+  raiz.style.fontSize = P.escala * 100 + '%';
+  $('#texto-valor').textContent = (P.escala * 100).toLocaleString('es-CL') + ' %';
+  $('#texto-menos').disabled = P.escala === ESCALAS[0];
+  $('#texto-mas').disabled = P.escala === ESCALAS[ESCALAS.length - 1];
+  document.querySelectorAll('input[name="tema"]').forEach(i => { i.checked = i.value === P.tema; });
+  try { localStorage.setItem(CLAVE_PREFS, JSON.stringify(P)); } catch { /* sin almacenamiento: vale para esta visita */ }
+  posicionarAjustes();
+}
+
+function cambiarEscala(delta) {
+  const i = ESCALAS.indexOf(P.escala) + delta;
+  P.escala = ESCALAS[Math.min(Math.max(i, 0), ESCALAS.length - 1)];
+  aplicarPrefs();
+}
+
+// Bajo su botón en escritorio; en celular el CSS lo convierte en hoja inferior.
+function posicionarAjustes() {
+  const panel = $('#ajustes');
+  if (panel.hidden) return;
+  const r = $('#btn-ajustes').getBoundingClientRect();
+  panel.style.top = r.bottom + 8 + 'px';
+  panel.style.right = Math.max(16, document.documentElement.clientWidth - r.right) + 'px';
+}
+
+function alternarAjustes(abrir) {
+  const panel = $('#ajustes');
+  const boton = $('#btn-ajustes');
+  const abierto = abrir ?? panel.hidden;
+  panel.hidden = !abierto;
+  if (abierto) posicionarAjustes();
+  boton.setAttribute('aria-expanded', String(abierto));
+  if (abierto) panel.querySelector('button:not(:disabled), input:checked')?.focus();
+}
+
 function alternarNotas(abrir) {
   const cajon = $('#cajon');
   const boton = $('#btn-notas');
@@ -734,8 +789,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const libreta = document.querySelector('#vista textarea.notas');
     if (libreta) libreta.value = S.notas;
   });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !$('#cajon').hidden && !$('#dlg').open) alternarNotas(false);
+  $('#btn-ajustes').addEventListener('click', () => alternarAjustes());
+  $('#texto-menos').addEventListener('click', () => cambiarEscala(-1));
+  $('#texto-mas').addEventListener('click', () => cambiarEscala(1));
+  document.querySelectorAll('input[name="tema"]').forEach(i => i.addEventListener('change', () => {
+    P.tema = i.value;
+    aplicarPrefs();
+  }));
+  window.addEventListener('resize', posicionarAjustes);
+  document.addEventListener('click', e => {
+    if (!$('#ajustes').hidden && !e.target.closest('#ajustes, #btn-ajustes')) alternarAjustes(false);
   });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || $('#dlg').open) return;
+    if (!$('#ajustes').hidden) { alternarAjustes(false); $('#btn-ajustes').focus(); }
+    else if (!$('#cajon').hidden) alternarNotas(false);
+  });
+  aplicarPrefs();
   render();
 });

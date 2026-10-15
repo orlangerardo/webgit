@@ -9,12 +9,15 @@ confrontan a los sospechosos y entregan una hoja de resolución que el juego cor
 Abre `index.html` en un navegador. No necesita instalación ni conexión: no usa librerías ni servicios externos.
 El progreso se guarda en el propio navegador (`localStorage`); desde **Inicio** se puede empezar de nuevo.
 
+Desde el botón **Aa** del encabezado se puede agrandar o achicar el texto (87,5 % a 137,5 %) y elegir tema
+claro, oscuro o el del sistema. El botón **Notas** abre un panel para anotar desde cualquier pestaña.
+
 ## Estructura
 
 | Archivo | Contenido |
 | --- | --- |
 | `index.html` | Página única: cabecera, navegación y contenedores. |
-| `styles.css` | Diseño de dossier policial, con modo oscuro y vista para celular. |
+| `styles.css` | Diseño moderno con tema claro y oscuro, escalable con el tamaño de texto y adaptado a celular. |
 | `caso.js` | Todo el contenido del caso: textos, declaraciones, pruebas, diligencias y solución. |
 | `app.js` | Pantallas, reglas de puntaje, confrontaciones y corrección. |
 | `assets/` | Imágenes del caso (creadas con inteligencia artificial). |

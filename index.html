@@ -5,7 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cata a Ciegas · Expediente Noir</title>
 <meta name="description" content="Juego de misterio: resuelvan el envenenamiento de Tomás Etchegaray en una cata a ciegas.">
-<meta name="theme-color" content="#8f1d2c">
+<meta name="theme-color" content="#f4f2ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1014" media="(prefers-color-scheme: dark)">
+<script>
+  // Aplica tema y tamaño de texto guardados antes de pintar, para evitar un parpadeo.
+  try {
+    var p = JSON.parse(localStorage.getItem('cata-a-ciegas.prefs')) || {};
+    if (p.tema === 'claro') document.documentElement.dataset.theme = 'light';
+    if (p.tema === 'oscuro') document.documentElement.dataset.theme = 'dark';
+    if (p.escala) document.documentElement.style.fontSize = (p.escala * 100) + '%';
+  } catch (e) {}
+</script>
 <meta property="og:title" content="Cata a Ciegas · Expediente Noir">
 <meta property="og:description" content="Un hombre muere envenenado en mitad de su propia cata. Cinco sospechosos, un solo culpable. ¿Lo resuelves?">
 <meta property="og:type" content="website">
@@ -16,15 +26,36 @@
 <body>
 <header class="barra">
   <div class="barra-fila">
-    <h1 class="marca">Cata a Ciegas <small>Expediente N.º 000 · Brigada de Homicidios</small></h1>
+    <h1 class="marca">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 2.5h9l-.6 6.2a3.9 3.9 0 0 1-7.8 0z"/><path d="M12 12.8v7.7"/><path d="M8 21h8"/></svg>
+      </span>
+      <span>Cata a Ciegas <small>Expediente N.º 000 · Brigada de Homicidios</small></span>
+    </h1>
     <div class="chips" aria-live="polite">
       <span class="chip" id="chip-puntos"></span>
       <span class="chip" id="chip-pistas"></span>
       <button type="button" class="chip chip-btn" id="btn-notas" aria-expanded="false" aria-controls="cajon">Notas</button>
+      <button type="button" class="chip chip-btn" id="btn-ajustes" aria-expanded="false" aria-controls="ajustes" aria-label="Ajustes de lectura: tamaño del texto y tema">Aa</button>
     </div>
   </div>
   <nav id="nav" aria-label="Secciones del expediente"></nav>
 </header>
+
+  <div class="ajustes" id="ajustes" role="dialog" aria-label="Ajustes de lectura" hidden>
+    <p class="ajustes-titulo">Tamaño del texto</p>
+    <div class="tamano">
+      <button type="button" id="texto-menos" aria-label="Achicar el texto">A−</button>
+      <output id="texto-valor" aria-live="polite">100 %</output>
+      <button type="button" id="texto-mas" aria-label="Agrandar el texto">A+</button>
+    </div>
+    <p class="ajustes-titulo">Tema</p>
+    <div class="segmento" role="radiogroup" aria-label="Tema">
+      <label><input type="radio" name="tema" value="claro"><span>Claro</span></label>
+      <label><input type="radio" name="tema" value="oscuro"><span>Oscuro</span></label>
+      <label><input type="radio" name="tema" value="sistema"><span>Sistema</span></label>
+    </div>
+  </div>
 
 <main id="vista"></main>
 
